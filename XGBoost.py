@@ -55,7 +55,7 @@ def train_model(df):
         learning_rate=0.05,
         reg_alpha=1,
         subsample=0.7,
-        n_jobs=-1
+        
     )
     
     model = MultiOutputRegressor(base_xgb)
