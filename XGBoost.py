@@ -1,11 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
-from sklearn.multioutput import MultiOutputRegressor
-import xgboost as xgb
+import joblib
 
 # Set up the page configuration
 st.set_page_config(page_title="Economic Expenditure Predictor", page_icon="📊", layout="wide")
@@ -13,7 +10,6 @@ st.set_page_config(page_title="Economic Expenditure Predictor", page_icon="📊"
 st.title("📊 XGBoost Economic Expenditure Predictor")
 st.write("Predict 6 government spending sectors (as % of GDP) based on historical economic data.")
 
-# Target and Feature column definitions
 TARGET_COLS = [
     "health_expense",
     "total_gov_expense",
@@ -25,49 +21,29 @@ TARGET_COLS = [
 
 @st.cache_data
 def load_data():
-    # Ensure "refined_economic_dataset.csv" is in the same directory
     try:
         df = pd.read_csv("refined_economic_dataset.csv")
         return df
     except FileNotFoundError:
-        st.error("Dataset not found! Please ensure 'refined_economic_dataset.csv' is uploaded to the repository.")
+        st.error("Dataset not found! Please ensure 'refined_economic_dataset.csv' is uploaded.")
         return None
 
 @st.cache_resource
-def train_model(df):
-    """Encodes data and trains the XGBoost model using the best found hyperparameters."""
-    le = LabelEncoder()
-    df["country_encoded"] = le.fit_transform(df["country_name"])
-    country_mapping = dict(zip(le.classes_, le.transform(le.classes_)))
-    
-    df["log_gdp"] = np.log10(df["total_gdp"])
-    
-    FEATURE_COLS = ["country_encoded", "year", "log_gdp"]
-    X = df[FEATURE_COLS]
-    Y = df[TARGET_COLS]
-    
-    # Best Parameters from GridSearch
-    base_xgb = xgb.XGBRegressor(
-        objective='reg:squarederror', 
-        random_state=42, 
-        n_estimators=1000,
-        max_depth=4,
-        learning_rate=0.05,
-        reg_alpha=1,
-        subsample=0.7,
-        
-    )
-    
-    model = MultiOutputRegressor(base_xgb)
-    model.fit(X, Y)
-    
-    return model, country_mapping, df
+def load_model_assets():
+    """Loads the pre-trained XGBoost model and country mapping dictionaries."""
+    try:
+        model = joblib.load("xgboost_budget_model.pkl")
+        country_mapping = joblib.load("country_mapping.pkl")
+        return model, country_mapping
+    except FileNotFoundError:
+        st.error("Model files not found! Please ensure the .pkl files are uploaded.")
+        return None, None
 
-# Load and prepare data/model
+# Load data and pre-trained model
 df = load_data()
+model, country_mapping = load_model_assets()
 
-if df is not None:
-    model, country_mapping, df = train_model(df)
+if df is not None and model is not None:
     valid_countries = sorted(df["country_name"].unique())
     
     # Sidebar for User Inputs
